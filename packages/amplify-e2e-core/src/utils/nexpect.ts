@@ -556,28 +556,8 @@ function chain(context: Context): ExecutionContext {
         data = strip(data);
       }
 
-      let lines = data.split(EOL).filter(line => line.length > 0 && line !== '\r');
-
-      if (process.platform === 'win32') {
-        let prevLine = '';
-        let processedLines = [];
-        for (const line of lines) {
-          // Windows executors in CCI will insert EOL chars into lines after 119 characters
-          if (line.length >= 119) {
-            prevLine += line;
-          } else {
-            prevLine = line;
-          }
-
-          if (prevLine.slice(-1) === '\n') {
-            processedLines.push(prevLine);
-            prevLine = '';
-          }
-        }
-        stdout = stdout.concat(processedLines);
-      } else {
-        stdout = stdout.concat(lines);
-      }
+      const lines = data.split(EOL).filter(line => line.length > 0 && line !== '\r');
+      stdout = stdout.concat(lines);
 
       while (lines.length > 0) {
         evalContext(lines.shift(), null);
