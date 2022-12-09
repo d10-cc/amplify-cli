@@ -559,12 +559,12 @@ function chain(context: Context): ExecutionContext {
       let lines = data.split(EOL).filter(line => line.length > 0 && line !== '\r');
 
       if (process.platform === 'win32') {
-        // Windows will insert \r characters into lines after a certain length so we need to recombine the output for tests to work
         let prevLine = '';
         let processedLines = [];
         for (const line of lines) {
-          if (line.slice(-1) === '\r') {
-            prevLine += line.slice(0, line.length - 1);
+          // Windows executors in CCI will insert EOL chars into lines after 119 characters
+          if (line.length >= 119) {
+            prevLine += line;
           } else {
             prevLine = line;
           }
