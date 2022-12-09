@@ -21,6 +21,11 @@ function uploadPkgCli {
     export version=$(./amplify-pkg-linux-x64 --version)
 
     if [[ "$CIRCLE_BRANCH" == "release" ]] || [[ "$CIRCLE_BRANCH" =~ ^run-e2e-with-rc\/.* ]] || [[ "$CIRCLE_BRANCH" =~ ^release_rc\/.* ]] || [[ "$CIRCLE_BRANCH" =~ ^tagged-release ]]; then
+        tar -czvf amplify-pkg-linux-arm64.tgz amplify-pkg-linux-arm64
+        tar -czvf amplify-pkg-linux-x64.tgz amplify-pkg-linux-x64
+        tar -czvf amplify-pkg-macos-x64.tgz amplify-pkg-macos-x64
+        tar -czvf amplify-pkg-win-x64.tgz amplify-pkg-win-x64.exe
+
         aws --profile=s3-uploader s3 cp amplify-pkg-win-x64.tgz s3://aws-amplify-cli-do-not-delete/$(echo $version)/amplify-pkg-win-x64-$(echo $hash).tgz
         aws --profile=s3-uploader s3 cp amplify-pkg-macos-x64.tgz s3://aws-amplify-cli-do-not-delete/$(echo $version)/amplify-pkg-macos-x64-$(echo $hash).tgz
         aws --profile=s3-uploader s3 cp amplify-pkg-linux-arm64.tgz s3://aws-amplify-cli-do-not-delete/$(echo $version)/amplify-pkg-linux-arm64-$(echo $hash).tgz
@@ -45,6 +50,7 @@ function uploadPkgCli {
         aws --profile=s3-uploader s3 cp amplify-pkg-linux-x64.tgz s3://aws-amplify-cli-do-not-delete/$(echo $version)/amplify-pkg-linux-x64.tgz
 
     else
+        tar -czvf amplify-pkg-linux-x64.tgz amplify-pkg-linux-x64
         aws --profile=s3-uploader s3 cp amplify-pkg-linux-x64.tgz s3://aws-amplify-cli-do-not-delete/$(echo $version)/amplify-pkg-linux-x64-$(echo $hash).tgz
     fi
 
@@ -75,27 +81,19 @@ function generatePkgCli {
 
   # Build pkg cli
   cp package.json ../build/node_modules/package.json
-
-  if [[ "$@" =~ 'arm' ]]; then
+  if [[ "$CIRCLE_BRANCH" == "release" ]] || [[ "$CIRCLE_BRANCH" =~ ^run-e2e-with-rc\/.* ]] || [[ "$CIRCLE_BRANCH" =~ ^release_rc\/.* ]] || [[ "$CIRCLE_BRANCH" =~ ^tagged-release ]]; then
+    # This will generate a file our arm64 binary
     npx pkg --no-bytecode --public-packages "*" --public -t node14-linux-arm64 ../build/node_modules -o ../out/amplify-pkg-linux-arm64
-    tar -czvf ../out/amplify-pkg-linux-arm64.tgz ../out/amplify-pkg-linux-arm64
-  fi
-
-  if [[ "$@" =~ 'linux' ]]; then
-    npx pkg -t node14-linux-x64 ../build/node_modules -o ../out/amplify-pkg-linux-x64
-    tar -czvf ../out/amplify-pkg-linux-x64.tgz ../out/amplify-pkg-linux-x64
-  fi
-
-  if [[ "$@" =~ 'macos' ]]; then
+    # This will generate files for our x64 binaries.
     npx pkg -t node14-macos-x64 ../build/node_modules -o ../out/amplify-pkg-macos-x64
-    tar -czvf ../out/amplify-pkg-macos-x64.tgz ../out/amplify-pkg-macos-x64
-  fi
-
-  if [[ "$@" =~ 'win' ]]; then
+    npx pkg -t node14-linux-x64 ../build/node_modules -o ../out/amplify-pkg-linux-x64
     npx pkg -t node14-win-x64 ../build/node_modules -o ../out/amplify-pkg-win-x64.exe
-    tar -czvf ../out/amplify-pkg-win-x64.tgz ../out/amplify-pkg-win-x64.exe
+  else
+    # This will generate files for our x64 binaries.
+    npx pkg -t node14-macos-x64 ../build/node_modules -o ../out/amplify-pkg-macos-x64
+    npx pkg -t node14-linux-x64 ../build/node_modules -o ../out/amplify-pkg-linux-x64
+    npx pkg -t node14-win-x64 ../build/node_modules -o ../out/amplify-pkg-win-x64.exe
   fi
-
   cd ..
 }
 

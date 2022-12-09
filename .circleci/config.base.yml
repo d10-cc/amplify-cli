@@ -104,6 +104,38 @@ jobs:
       - run:
           name: Build tests
           command: yarn build-tests
+      - run:
+          name: Publish to verdaccio
+          command: |
+            source .circleci/local_publish_helpers.sh
+            startLocalRegistry "$(pwd)/.circleci/verdaccio.yaml"
+            setNpmRegistryUrlToLocal
+            export LOCAL_PUBLISH_TO_LATEST=true
+            ./.circleci/publish.sh
+            unsetNpmRegistryUrl
+      - run:
+          name: Generate unified changelog
+          command: |
+            git reset --soft HEAD~1
+            yarn ts-node scripts/unified-changelog.ts
+            cat UNIFIED_CHANGELOG.md
+      - run:
+          name: Save new amplify GitHub tag
+          command: node scripts/echo-current-cli-version.js > .amplify-pkg-version
+      - run:
+          name: Start verdaccio and package CLI
+          command: |
+            source .circleci/local_publish_helpers.sh
+            startLocalRegistry "$(pwd)/.circleci/verdaccio.yaml"
+            setNpmRegistryUrlToLocal
+            changeNpmGlobalPath
+            generatePkgCli
+            unsetNpmRegistryUrl
+            uploadPkgCli
+      - save_cache:
+          key: amplify-verdaccio-cache-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/verdaccio-cache/
       - save_cache:
           key: amplify-cli-repo-{{ .Branch }}-{{ .Revision }}
           paths:
@@ -195,172 +227,11 @@ jobs:
       - store_test_results:
           path: ~/repo/packages/amplify-util-mock/
 
-  publish_to_local_registry:
-    <<: *linux-e2e-executor-large
-    steps:
-      - restore_cache:
-          key: amplify-cli-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-cli-yarn-deps-{{ .Branch }}-{{ checksum "yarn.lock" }}
-      - run:
-          name: Publish to verdaccio
-          command: |
-            source .circleci/local_publish_helpers.sh
-            startLocalRegistry "$(pwd)/.circleci/verdaccio.yaml"
-            setNpmRegistryUrlToLocal
-            export LOCAL_PUBLISH_TO_LATEST=true
-            ./.circleci/publish.sh
-            unsetNpmRegistryUrl
-      - run:
-          name: Generate unified changelog
-          command: |
-            git reset --soft HEAD~1
-            yarn ts-node scripts/unified-changelog.ts
-            cat UNIFIED_CHANGELOG.md
-      - run:
-          name: Save new amplify GitHub tag
-          command: node scripts/echo-current-cli-version.js > .amplify-pkg-version
-      - save_cache:
-          key: amplify-verdaccio-cache-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ~/verdaccio-cache/
-      - save_cache:
-          key: amplify-unified-changelog-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ~/repo/UNIFIED_CHANGELOG.md
-      - save_cache:
-          key: amplfiy-pkg-tag-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ~/repo/.amplify-pkg-version
-
-  upload_pkg_binaries:
-    <<: *linux-e2e-executor-large
-    steps:
-      - restore_cache:
-          key: amplify-cli-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-pkg-binaries-linux-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-pkg-binaries-macos-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-pkg-binaries-win-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-pkg-binaries-arm-{{ .Branch }}-{{ .Revision }}
-      - run:
-          name: Consolidate binaries cache and upload
-          command: |
-            source .circleci/local_publish_helpers.sh
-            uploadPkgCli
-      - save_cache:
-          key: amplify-pkg-binaries-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ~/repo/out
-
-  build_pkg_binaries_linux:
-    <<: *linux-e2e-executor-large
-    steps:
-      - restore_cache:
-          key: amplify-cli-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-cli-yarn-deps-{{ .Branch }}-{{ checksum "yarn.lock" }}
-      - restore_cache:
-          key: amplify-verdaccio-cache-{{ .Branch }}-{{ .Revision }}
-      - run:
-          name: Start verdaccio and package CLI
-          command: |
-            source .circleci/local_publish_helpers.sh
-            startLocalRegistry "$(pwd)/.circleci/verdaccio.yaml"
-            setNpmRegistryUrlToLocal
-            changeNpmGlobalPath
-            generatePkgCli linux
-            unsetNpmRegistryUrl
-      - save_cache:
-          key: amplify-pkg-binaries-linux-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ~/repo/out
-
-  build_pkg_binaries_macos:
-    <<: *linux-e2e-executor-large
-    steps:
-      - restore_cache:
-          key: amplify-cli-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-cli-yarn-deps-{{ .Branch }}-{{ checksum "yarn.lock" }}
-      - restore_cache:
-          key: amplify-verdaccio-cache-{{ .Branch }}-{{ .Revision }}
-      - run:
-          name: Start verdaccio and package CLI
-          command: |
-            source .circleci/local_publish_helpers.sh
-            startLocalRegistry "$(pwd)/.circleci/verdaccio.yaml"
-            setNpmRegistryUrlToLocal
-            changeNpmGlobalPath
-            generatePkgCli macos
-            unsetNpmRegistryUrl
-      - save_cache:
-          key: amplify-pkg-binaries-macos-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ~/repo/out
-
-  build_pkg_binaries_win:
-    <<: *linux-e2e-executor-large
-    steps:
-      - restore_cache:
-          key: amplify-cli-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-cli-yarn-deps-{{ .Branch }}-{{ checksum "yarn.lock" }}
-      - restore_cache:
-          key: amplify-verdaccio-cache-{{ .Branch }}-{{ .Revision }}
-      - run:
-          name: Start verdaccio and package CLI
-          command: |
-            source .circleci/local_publish_helpers.sh
-            startLocalRegistry "$(pwd)/.circleci/verdaccio.yaml"
-            setNpmRegistryUrlToLocal
-            changeNpmGlobalPath
-            generatePkgCli win
-            unsetNpmRegistryUrl
-      - save_cache:
-          key: amplify-pkg-binaries-win-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ~/repo/out
-
-  build_pkg_binaries_arm:
-    <<: *linux-e2e-executor-large
-    steps:
-      - restore_cache:
-          key: amplify-cli-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-cli-yarn-deps-{{ .Branch }}-{{ checksum "yarn.lock" }}
-      - restore_cache:
-          key: amplify-verdaccio-cache-{{ .Branch }}-{{ .Revision }}
-      - run:
-          name: Start verdaccio and package CLI
-          command: |
-            source .circleci/local_publish_helpers.sh
-            startLocalRegistry "$(pwd)/.circleci/verdaccio.yaml"
-            setNpmRegistryUrlToLocal
-            changeNpmGlobalPath
-            generatePkgCli arm
-            unsetNpmRegistryUrl
-      - save_cache:
-          key: amplify-pkg-binaries-arm-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ~/repo/out
-
   verify_pkg_binaries:
     <<: *linux-e2e-executor-large
     steps:
       - restore_cache:
           key: amplify-cli-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-pkg-binaries-linux-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-pkg-binaries-macos-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-pkg-binaries-win-{{ .Branch }}-{{ .Revision }}
-      - restore_cache:
-          key: amplify-pkg-binaries-arm-{{ .Branch }}-{{ .Revision }}
       - run:
           name: Verify packaged CLI
           command: |
@@ -845,6 +716,10 @@ workflows:
             branches:
               ignore:
                 - beta
+          context:
+            - e2e-auth-credentials
+            - e2e-test-context
+            - amplify-s3-upload
       - build_windows_workspace_for_e2e:
           filters:
             branches:
@@ -903,7 +778,7 @@ workflows:
                 - /tagged-release\/.*/
                 - /run-e2e\/.*/
           requires:
-            - upload_pkg_binaries
+            - build
       - integration_test:
           context:
             - e2e-test-context
@@ -916,51 +791,13 @@ workflows:
                 - /run-e2e\/.*/
           requires:
             - build
-      - publish_to_local_registry:
-          requires:
-            - build
-      - upload_pkg_binaries:
-          filters:
-            branches:
-              only:
-                - dev
-                - release
-                - /release_rc\/.*/
-                - /run-e2e-with-rc\/.*/
-                - /tagged-release\/.*/
-                - /tagged-release-without-e2e-tests\/.*/
-                - /run-e2e\/.*/
-          context:
-            - e2e-auth-credentials
-            - e2e-test-context
-            - amplify-s3-upload
-          requires:
-            - build_pkg_binaries_linux
-            - build_pkg_binaries_macos
-            - build_pkg_binaries_win
-            - build_pkg_binaries_arm
-      - build_pkg_binaries_linux:
-          requires:
-            - publish_to_local_registry
-      - build_pkg_binaries_macos:
-          requires:
-            - publish_to_local_registry
-      - build_pkg_binaries_win:
-          requires:
-            - publish_to_local_registry
-      - build_pkg_binaries_arm:
-          requires:
-            - publish_to_local_registry
       - verify_pkg_binaries:
           requires:
-            - build_pkg_binaries_linux
-            - build_pkg_binaries_macos
-            - build_pkg_binaries_win
-            - build_pkg_binaries_arm
+            - build
       - amplify_sudo_install_test:
           context: amplify-ecr-image-pull
           requires:
-            - upload_pkg_binaries
+            - build
           filters:
             branches:
               only:
@@ -993,7 +830,7 @@ workflows:
                 - /tagged-release\/.*/
                 - /run-e2e\/.*/
           requires:
-            - upload_pkg_binaries
+            - build
             - build_windows_workspace_for_e2e
       - amplify_migration_tests_v6:
           context:
@@ -1008,7 +845,7 @@ workflows:
                 - /tagged-release\/.*/
                 - /run-e2e\/.*/
           requires:
-            - upload_pkg_binaries
+            - build
       - amplify_migration_tests_v5:
           context:
             - e2e-auth-credentials
@@ -1022,7 +859,7 @@ workflows:
                 - /tagged-release\/.*/
                 - /run-e2e\/.*/
           requires:
-            - upload_pkg_binaries
+            - build
       - amplify_migration_tests_non_multi_env_layers:
           context:
             - e2e-auth-credentials
@@ -1036,7 +873,7 @@ workflows:
                 - /tagged-release\/.*/
                 - /run-e2e\/.*/
           requires:
-            - upload_pkg_binaries
+            - build
       - amplify_migration_tests_multi_env_layers:
           context:
             - e2e-auth-credentials
@@ -1050,7 +887,7 @@ workflows:
                 - /tagged-release\/.*/
                 - /run-e2e\/.*/
           requires:
-            - upload_pkg_binaries
+            - build
       - amplify_console_integration_tests:
           context:
             - e2e-auth-credentials
@@ -1062,11 +899,11 @@ workflows:
               only:
                 - dev
           requires:
-            - upload_pkg_binaries
+            - build
       - github_prerelease:
           context: github-publish
           requires:
-            - upload_pkg_binaries
+            - build
           filters:
             branches:
               only:
@@ -1125,7 +962,7 @@ workflows:
             - amplify_migration_tests_non_multi_env_layers
             - amplify_migration_tests_multi_env_layers
             - github_prerelease_install_sanity_check
-            - upload_pkg_binaries
+            - build
           filters:
             branches:
               only:
