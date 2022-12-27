@@ -68,8 +68,8 @@ export const run = async (startTime: number): Promise<void> => {
   deleteOldVersion();
 
   //TODO: This is a temporary suppression for CDK deprecation warnings, which should be removed after the migration is complete
-  // Most of these warning messages are targetting searchable directive, which needs to migrate from elastic search to open search
-  // This is not diabled in debug mode
+  // Most of these warning messages are targeting searchable directive, which needs to migrate from elastic search to open search
+  // This is not disabled in debug mode
   disableCDKDeprecationWarning();
 
   let pluginPlatform = await getPluginPlatform();
