@@ -89,8 +89,11 @@ const moveBackendResourcesToCurrentCloudBackend = (resources: $TSObject[]): void
     }
   }
 
-  fs.copySync(amplifyMetaFilePath, amplifyCloudMetaFilePath, { overwrite: true });
-  fs.copySync(backendConfigFilePath, backendConfigCloudFilePath, { overwrite: true });
+  fs.removeSync(amplifyCloudMetaFilePath);
+  fs.copySync(amplifyMetaFilePath, amplifyCloudMetaFilePath);
+
+  fs.removeSync(backendConfigCloudFilePath);
+  fs.copySync(backendConfigFilePath, backendConfigCloudFilePath);
   /**
    * copying package.json and tsconfig.json to current cloud backend
    */
