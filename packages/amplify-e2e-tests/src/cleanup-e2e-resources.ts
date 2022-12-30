@@ -603,7 +603,7 @@ const deleteCfnStack = async (account: AWSAccountInfo, accountIndex: number, sta
     const cfnClient = new aws.CloudFormation(getAWSConfig(account, region));
     await cfnClient.deleteStack({ StackName: stackName, RetainResources: resourceToRetain }).promise();
     // we'll only wait up to 10 minutes before moving on
-    await cfnClient.waitFor('stackDeleteComplete', { StackName: stackName, $waiter: { 'maxAttempts': 20 }}).promise();
+    await cfnClient.waitFor('stackDeleteComplete', { StackName: stackName, $waiter: { maxAttempts: 20 } }).promise();
   } catch (e) {
     console.log(`Deleting CloudFormation stack ${stackName} failed with error ${e.message}`);
     if (e.code === 'ExpiredTokenException') {
@@ -626,26 +626,28 @@ const deleteResources = async (
   accountIndex: number,
   staleResources: Record<string, ReportEntry>,
 ): Promise<void> => {
-  for (const jobId of Object.keys(staleResources)) {
-    const resources = staleResources[jobId];
-    if (resources.amplifyApps) {
-      await deleteAmplifyApps(account, accountIndex, Object.values(resources.amplifyApps));
-    }
+  for (let i = 0; i++; i < 5) {
+    for (const jobId of Object.keys(staleResources)) {
+      const resources = staleResources[jobId];
+      if (resources.amplifyApps) {
+        await deleteAmplifyApps(account, accountIndex, Object.values(resources.amplifyApps));
+      }
 
-    if (resources.stacks) {
-      await deleteCfnStacks(account, accountIndex, Object.values(resources.stacks));
-    }
+      if (resources.stacks) {
+        await deleteCfnStacks(account, accountIndex, Object.values(resources.stacks));
+      }
 
-    if (resources.buckets) {
-      await deleteBuckets(account, accountIndex, Object.values(resources.buckets));
-    }
+      if (resources.buckets) {
+        await deleteBuckets(account, accountIndex, Object.values(resources.buckets));
+      }
 
-    if (resources.roles) {
-      await deleteIamRoles(account, accountIndex, Object.values(resources.roles));
-    }
+      if (resources.roles) {
+        await deleteIamRoles(account, accountIndex, Object.values(resources.roles));
+      }
 
-    if (resources.pinpointApps) {
-      await deletePinpointApps(account, accountIndex, Object.values(resources.pinpointApps));
+      if (resources.pinpointApps) {
+        await deletePinpointApps(account, accountIndex, Object.values(resources.pinpointApps));
+      }
     }
   }
 };
