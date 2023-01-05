@@ -2,6 +2,7 @@
  * AppSync GraphQL client for testing AmplifyAppSyncSimulator
  */
 
+import * as https from 'https';
 import * as http from 'http';
 import type { GraphQLError } from 'graphql';
 import { AmplifyAppSyncSimulator, AmplifyAppSyncSimulatorAuthenticationType } from '../../';
@@ -71,7 +72,7 @@ export async function appSyncClient<ResponseDataType = unknown, VarsType = Recor
   }
 
   return await new Promise((resolve, reject) => {
-    const httpRequest = http.request(
+    const httpRequest = https.request(
       appSync.url,
       {
         host: 'localhost',

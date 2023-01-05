@@ -1,11 +1,12 @@
 import { OperationServer } from './operations';
 import { AmplifyAppSyncSimulator } from '..';
 import { AppSyncSimulatorServerConfig } from '../type-definition';
-import { Server, createServer } from 'http';
+import { Server, createServer } from 'https';
 import { fromEvent } from 'promise-toolbox';
 import { address as getLocalIpAddress } from 'ip';
 import { AppSyncSimulatorSubscriptionServer } from './websocket-subscription';
 import getPort from 'get-port';
+import { readFileSync } from 'fs';
 import { REALTIME_SUBSCRIPTION_PATH } from './subscription/websocket-server/server';
 
 const BASE_PORT = 8900;
@@ -18,6 +19,13 @@ export class AppSyncSimulatorServer {
   private _url: string;
 
   constructor(private config: AppSyncSimulatorServerConfig, private simulatorContext: AmplifyAppSyncSimulator) {
+    let options = {};
+    if (config.key && config.cert) {
+      options = {
+        key: readFileSync(config.key),
+        cert: readFileSync(config.cert),
+      };
+    }
     this._operationServer = new OperationServer(config, simulatorContext);
     this._httpServer = createServer(this._operationServer.app);
     this._realTimeSubscriptionServer = new AppSyncSimulatorSubscriptionServer(simulatorContext, this._httpServer, REALTIME_SUBSCRIPTION_PATH);
@@ -44,7 +52,7 @@ export class AppSyncSimulatorServer {
 
     this._httpServer.listen(port);
     await fromEvent(this._httpServer, 'listening').then(() => {
-      this._url = `http://${getLocalIpAddress()}:${port}`;
+      this._url = `https://${getLocalIpAddress()}:${port}`;
     });
   }
 

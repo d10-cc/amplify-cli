@@ -71,6 +71,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "lerna": "^5.0.0",
+    "node-gyp": "^9.3.1",
     "strip-ansi": "^6.0.0"
   },
   "workspaces": {
@@ -130,14 +131,5 @@
     "ts-jest": "^26.4.4",
     "ts-node": "^8.10.1",
     "typescript": "^4.5.5"
-  },
-  "resolutions": {
-    "**/cross-fetch": "^2.2.6",
-    "**/glob-parent": "^6.0.2",
-    "**/got": "^11.8.5",
-    "**/istanbul/async": "^2.6.4",
-    "**/jake/async": "^2.6.4",
-    "**/nth-check": "^2.0.1",
-    "**/undici": "^5.8.0"
   }
 }
